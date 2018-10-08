@@ -1,0 +1,11 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "packageManager": "yarn",
+    "isCreatingSolution": false,
+    "environment": "spo",
+    "version": "1.6.0",
+    "libraryName": "spfx-people-picker",
+    "libraryId": "d6d2d8b1-d8fa-48ee-bd1b-baa5cfff82ba",
+    "componentType": "webpart"
+  }
+}

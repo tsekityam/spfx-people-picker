@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "spfx-people-picker-client-side-solution",
+    "id": "d6d2d8b1-d8fa-48ee-bd1b-baa5cfff82ba",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true
+  },
+  "paths": {
+    "zippedPackage": "solution/spfx-people-picker.sppkg"
+  }
+}
