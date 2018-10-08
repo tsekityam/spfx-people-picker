@@ -1,12 +1,8 @@
 import * as React from "react";
 import { IHelloWorldProps } from "./IHelloWorldProps";
-import {
-  OfficeUiFabricPeoplePicker,
-  SharePointUserPersona
-} from "../../../lib/officeUiFabricPeoplePicker";
+import { OfficeUiFabricPeoplePickerContainer } from "../../../lib/officeUiFabricPeoplePicker";
 import { IHelloWorldState } from "./IHelloWorldState";
 import { Environment, EnvironmentType } from "@microsoft/sp-core-library";
-import { sp } from "@pnp/sp";
 
 export default class HelloWorld extends React.Component<
   IHelloWorldProps,
@@ -21,7 +17,7 @@ export default class HelloWorld extends React.Component<
 
   public render(): React.ReactElement<IHelloWorldProps> {
     return (
-      <OfficeUiFabricPeoplePicker
+      <OfficeUiFabricPeoplePickerContainer
         typePicker={"Normal"}
         principalTypeUser={true}
         principalTypeSharePointGroup={false}

@@ -1,3 +1,3 @@
-export * from "./IOfficeUiFabricPeoplePickerProps";
-export * from "./OfficeUiFabricPeoplePicker";
+export * from "./IOfficeUiFabricPeoplePickerContainerProps";
+export * from "./OfficeUiFabricPeoplePickerContainer";
 export * from "./PeoplePickerExampleData";
