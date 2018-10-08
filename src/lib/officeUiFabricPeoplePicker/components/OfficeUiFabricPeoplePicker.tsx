@@ -98,7 +98,6 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
    */
   private searchPeopleFromMock(terms: string): IPersonaProps[] {
     return people.filter((value: IPersonaProps) => {
-      console.log(value.primaryText, terms, value.primaryText.indexOf(terms));
       if (value.primaryText.toLowerCase().indexOf(terms.toLowerCase()) !== -1) {
         return value;
       }
