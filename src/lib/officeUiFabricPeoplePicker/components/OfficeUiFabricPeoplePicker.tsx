@@ -22,7 +22,7 @@ import {
   IOfficeUiFabricPeoplePickerState,
   SharePointUserPersona
 } from "../models/OfficeUiFabricPeoplePicker";
-import pnp, {
+import {
   sp,
   PeoplePickerEntity,
   ClientPeoplePickerQueryParameters
