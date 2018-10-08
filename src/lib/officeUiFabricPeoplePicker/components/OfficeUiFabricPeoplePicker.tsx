@@ -230,17 +230,4 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
       );
     }
   }
-
-  private _listContainsPersona(
-    persona: IPersonaProps,
-    personas: IPersonaProps[]
-  ) {
-    if (!personas || !personas.length || personas.length === 0) {
-      return false;
-    }
-    return (
-      personas.filter(item => item.primaryText === persona.primaryText).length >
-      0
-    );
-  }
 }
