@@ -34,35 +34,6 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
   IOfficeUiFabricPeoplePickerProps,
   IOfficeUiFabricPeoplePickerState
 > {
-  private contextualMenuItems: IContextualMenuItem[] = [
-    {
-      key: "newItem",
-      icon: "circlePlus",
-      name: "New"
-    },
-    {
-      key: "upload",
-      icon: "upload",
-      name: "Upload"
-    },
-    {
-      key: "divider_1",
-      name: "-"
-    },
-    {
-      key: "rename",
-      name: "Rename"
-    },
-    {
-      key: "properties",
-      name: "Properties"
-    },
-    {
-      key: "disabled",
-      name: "Disabled item",
-      disabled: true
-    }
-  ];
   constructor() {
     super();
     this.state = {
