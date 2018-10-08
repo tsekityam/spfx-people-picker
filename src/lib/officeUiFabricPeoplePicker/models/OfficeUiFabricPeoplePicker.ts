@@ -5,12 +5,6 @@ import {
   SiteUserProps
 } from "@pnp/sp";
 
-export interface IOfficeUiFabricPeoplePickerState {
-  currentPicker?: number | string;
-  delayResults?: boolean;
-  selectedItems: any[];
-}
-
 export class SharePointUserPersona implements IPersona {
   constructor(entity: PeoplePickerEntity, result: WebEnsureUserResult) {
     this.text = entity.DisplayText;

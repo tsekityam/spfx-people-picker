@@ -2,36 +2,25 @@ import * as React from "react";
 import { IOfficeUiFabricPeoplePickerProps } from "./IOfficeUiFabricPeoplePickerProps";
 import {
   CompactPeoplePicker,
-  IBasePickerSuggestionsProps,
   NormalPeoplePicker
 } from "office-ui-fabric-react/lib/Pickers";
 import { IPersonaProps } from "office-ui-fabric-react/lib/Persona";
 import { people } from "./PeoplePickerExampleData";
-import { IContextualMenuItem } from "office-ui-fabric-react/lib/ContextualMenu";
 import {
   SPHttpClient,
   SPHttpClientBatch,
   SPHttpClientResponse
 } from "@microsoft/sp-http";
 import { Environment, EnvironmentType } from "@microsoft/sp-core-library";
-import { Promise } from "es6-promise";
-import * as lodash from "lodash";
-import {
-  IOfficeUiFabricPeoplePickerState,
-  SharePointUserPersona
-} from "../models/OfficeUiFabricPeoplePicker";
+import { SharePointUserPersona } from "../models/OfficeUiFabricPeoplePicker";
 import {
   sp,
   PeoplePickerEntity,
   ClientPeoplePickerQueryParameters,
-  WebEnsureUserResult
+  WebEnsureUserResult,
+  stringIsNullOrEmpty
 } from "@pnp/pnpjs";
-
-const suggestionProps: IBasePickerSuggestionsProps = {
-  suggestionsHeaderText: "Suggested People",
-  noResultsFoundText: "No results found",
-  loadingText: "Loading"
-};
+import { IOfficeUiFabricPeoplePickerState } from "./IOfficeUiFabricPeoplePickerState";
 
 export class OfficeUiFabricPeoplePicker extends React.Component<
   IOfficeUiFabricPeoplePickerProps,
@@ -40,9 +29,7 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
   constructor() {
     super();
     this.state = {
-      currentPicker: 1,
-      delayResults: false,
-      selectedItems: []
+      defaultSelectedItems: []
     };
   }
 
@@ -50,48 +37,125 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
     if (this.props.typePicker == "Normal") {
       return (
         <NormalPeoplePicker
-          onChange={this._onChange.bind(this)}
+          onChange={this._onSelectionChange}
           onResolveSuggestions={this._onFilterChanged}
-          getTextFromItem={(persona: IPersonaProps) => persona.primaryText}
-          pickerSuggestionsProps={suggestionProps}
-          className={"ms-PeoplePicker"}
-          key={"normal"}
+          defaultSelectedItems={this.state.defaultSelectedItems}
         />
       );
     } else {
       return (
         <CompactPeoplePicker
-          onChange={this._onChange.bind(this)}
+          onChange={this._onSelectionChange}
           onResolveSuggestions={this._onFilterChanged}
-          getTextFromItem={(persona: IPersonaProps) => persona.primaryText}
-          pickerSuggestionsProps={suggestionProps}
-          className={"ms-PeoplePicker"}
-          key={"normal"}
+          defaultSelectedItems={this.state.defaultSelectedItems}
         />
       );
     }
   }
 
-  private _onChange(items: any[]) {
-    this.setState({
-      selectedItems: items
-    });
-    if (this.props.onChange) {
-      this.props.onChange(items);
+  public componentDidMount() {
+    if (Environment.type === EnvironmentType.Local) {
+    } else {
+      this._fetchDefaultSelection(this.props.defaultSelectionEmails);
     }
   }
 
-  private _onFilterChanged = (
-    filterText: string,
-    currentPersonas: IPersonaProps[]
-  ) => {
-    if (filterText) {
+  private _getSharePointUserPersonas(
+    entities: PeoplePickerEntity[]
+  ): Promise<IPersonaProps[]> {
+    var batch = sp.web.createBatch();
+
+    let personas = [];
+
+    entities.map((entity: PeoplePickerEntity) => {
+      batch.addResolveBatchDependency(
+        sp.web
+          .inBatch(batch)
+          .ensureUser(entity.EntityData.Email)
+          .then((result: WebEnsureUserResult) => {
+            personas.push(new SharePointUserPersona(entity, result));
+          })
+          .catch((error: any) => {
+            console.log(error);
+          })
+      );
+    });
+
+    return batch.execute().then(_ => {
+      return personas;
+    });
+  }
+
+  private _fetchDefaultSelection = (emails: string[]) => {
+    var batch = sp.web.createBatch();
+
+    let entities: PeoplePickerEntity[] = [];
+
+    emails.map((email: string) => {
+      batch.addResolveBatchDependency(
+        sp.profiles
+          .clientPeoplePickerSearchUser(this._getQueryParams(email))
+          .then((result: PeoplePickerEntity[]) => {
+            if (result.length === 1) {
+              entities.push(result[0]);
+            } else {
+              console.log("multiple entities fetched");
+            }
+          })
+      );
+    });
+
+    batch.execute().then(_ => {
+      this._getSharePointUserPersonas(entities).then(
+        (personas: SharePointUserPersona[]) => {
+          this.setState({ defaultSelectedItems: personas }, () => {
+            console.log(this.state.defaultSelectedItems);
+          });
+        }
+      );
+    });
+  }
+
+  private _onSelectionChange = (selection: SharePointUserPersona[]) => {
+    console.log(selection);
+  }
+
+  private _onFilterChanged = (filterText: string) => {
+    if (stringIsNullOrEmpty(filterText)) {
+      return [];
+    } else {
       if (filterText.length > 2) {
         return this._searchPeople(filterText);
       }
-    } else {
-      return [];
     }
+  }
+
+  private _getQueryParams = (terms: string) => {
+    let principalType: number = 0;
+    if (this.props.principalTypeUser === true) {
+      principalType += 1;
+    }
+    if (this.props.principalTypeSharePointGroup === true) {
+      principalType += 8;
+    }
+    if (this.props.principalTypeSecurityGroup === true) {
+      principalType += 4;
+    }
+    if (this.props.principalTypeDistributionList === true) {
+      principalType += 2;
+    }
+    return {
+      AllowEmailAddresses: true,
+      AllowMultipleEntities: false,
+      AllUrlZones: false,
+      MaximumEntitySuggestions: this.props.numberOfItems,
+      PrincipalSource: 15,
+      // PrincipalType controls the type of entities that are returned in the results.
+      // Choices are All - 15, Distribution List - 2 , Security Groups - 4, SharePoint Groups - 8, User - 1.
+      // These values can be combined (example: 13 is security + SP groups + users)
+      PrincipalType: principalType,
+      QueryString: terms
+    };
   }
 
   /**
@@ -113,56 +177,18 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
   private _searchPeople(
     terms: string
   ): IPersonaProps[] | Promise<IPersonaProps[]> {
-    if (DEBUG && Environment.type === EnvironmentType.Local) {
+    if (Environment.type === EnvironmentType.Local) {
       // If the running environment is local, load the data from the mock
       return this.searchPeopleFromMock(terms);
     } else {
-      let principalType: number = 0;
-      if (this.props.principalTypeUser === true) {
-        principalType += 1;
-      }
-      if (this.props.principalTypeSharePointGroup === true) {
-        principalType += 8;
-      }
-      if (this.props.principalTypeSecurityGroup === true) {
-        principalType += 4;
-      }
-      if (this.props.principalTypeDistributionList === true) {
-        principalType += 2;
-      }
-      const queryParams: ClientPeoplePickerQueryParameters = {
-        AllowEmailAddresses: true,
-        AllowMultipleEntities: false,
-        AllUrlZones: false,
-        MaximumEntitySuggestions: this.props.numberOfItems,
-        PrincipalSource: 15,
-        // PrincipalType controls the type of entities that are returned in the results.
-        // Choices are All - 15, Distribution List - 2 , Security Groups - 4, SharePoint Groups - 8, User - 1.
-        // These values can be combined (example: 13 is security + SP groups + users)
-        PrincipalType: principalType,
-        QueryString: terms
-      };
-
       return sp.profiles
-        .clientPeoplePickerSearchUser(queryParams)
+        .clientPeoplePickerSearchUser(this._getQueryParams(terms))
         .then((entities: PeoplePickerEntity[]) => {
-          var batch = sp.web.createBatch();
-
-          let personas = [];
-
-          entities.map((entity: PeoplePickerEntity) => {
-            sp.web
-              .inBatch(batch)
-              .ensureUser(entity.Key)
-              .then((result: WebEnsureUserResult) => {
-                personas.push(new SharePointUserPersona(entity, result));
-              });
-          });
-
-          return batch.execute().then(_ => {
-            console.log(personas);
-            return personas;
-          });
+          return this._getSharePointUserPersonas(entities);
+        })
+        .catch((error: any) => {
+          console.log(error);
+          return [];
         });
     }
   }
