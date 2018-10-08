@@ -80,8 +80,7 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
 
   private _onFilterChanged = (
     filterText: string,
-    currentPersonas: IPersonaProps[],
-    limitResults?: number
+    currentPersonas: IPersonaProps[]
   ) => {
     if (filterText) {
       if (filterText.length > 2) {
