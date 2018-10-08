@@ -36,7 +36,6 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
   IOfficeUiFabricPeoplePickerProps,
   IOfficeUiFabricPeoplePickerState
 > {
-  private _peopleList;
   private contextualMenuItems: IContextualMenuItem[] = [
     {
       key: "newItem",
@@ -68,14 +67,6 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
   ];
   constructor() {
     super();
-    this._peopleList = [];
-    people.forEach((persona: IPersonaProps) => {
-      let target: IPersonaWithMenu = {};
-
-      assign(target, persona, { menuItems: this.contextualMenuItems });
-      this._peopleList.push(target);
-    });
-
     this.state = {
       currentPicker: 1,
       delayResults: false,
@@ -126,7 +117,7 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
   ) {
     if (filterText) {
       if (filterText.length > 2) {
-        return this._searchPeople(filterText, this._peopleList);
+        return this._searchPeople(filterText);
       }
     } else {
       return [];
@@ -137,41 +128,13 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
    * @function
    * Returns fake people results for the Mock mode
    */
-  private searchPeopleFromMock(): IPersonaProps[] {
-    return (this._peopleList = [
-      {
-        imageUrl: "./images/persona-female.png",
-        imageInitials: "PV",
-        primaryText: "Annie Lindqvist",
-        secondaryText: "Designer",
-        tertiaryText: "In a meeting",
-        optionalText: "Available at 4:00pm"
-      },
-      {
-        imageUrl: "./images/persona-male.png",
-        imageInitials: "AR",
-        primaryText: "Aaron Reid",
-        secondaryText: "Designer",
-        tertiaryText: "In a meeting",
-        optionalText: "Available at 4:00pm"
-      },
-      {
-        imageUrl: "./images/persona-male.png",
-        imageInitials: "AL",
-        primaryText: "Alex Lundberg",
-        secondaryText: "Software Developer",
-        tertiaryText: "In a meeting",
-        optionalText: "Available at 4:00pm"
-      },
-      {
-        imageUrl: "./images/persona-male.png",
-        imageInitials: "RK",
-        primaryText: "Roko Kolar",
-        secondaryText: "Financial Analyst",
-        tertiaryText: "In a meeting",
-        optionalText: "Available at 4:00pm"
+  private searchPeopleFromMock(terms: string): IPersonaProps[] {
+    return people.filter((value: IPersonaProps) => {
+      console.log(value.primaryText, terms, value.primaryText.indexOf(terms));
+      if (value.primaryText.toLowerCase().indexOf(terms.toLowerCase()) !== -1) {
+        return value;
       }
-    ]);
+    });
   }
 
   /**
@@ -179,12 +142,11 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
    * Returns people results after a REST API call
    */
   private _searchPeople(
-    terms: string,
-    results: IPersonaProps[]
+    terms: string
   ): IPersonaProps[] | Promise<IPersonaProps[]> {
     if (DEBUG && Environment.type === EnvironmentType.Local) {
       // If the running environment is local, load the data from the mock
-      return this.searchPeopleFromMock();
+      return this.searchPeopleFromMock(terms);
     } else {
       const userRequestUrl: string = `${
         this.props.siteUrl
@@ -234,60 +196,41 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
             );
             return persons;
           })
-          .then(
-            persons => {
-              const batch = this.props.spHttpClient.beginBatch();
-              const ensureUserUrl = `${this.props.siteUrl}/_api/web/ensureUser`;
-              const batchPromises: Promise<IEnsureUser>[] = persons.map(p => {
-                var userQuery = JSON.stringify({ logonName: p.User.Key });
-                return batch
-                  .post(ensureUserUrl, SPHttpClientBatch.configurations.v1, {
-                    body: userQuery
-                  })
-                  .then((response: SPHttpClientResponse) => response.json())
-                  .then((json: IEnsureUser) => json);
-              });
-
-              var users = batch.execute().then(() =>
-                Promise.all(batchPromises).then(values => {
-                  values.forEach(v => {
-                    let userPersona = lodash.find(
-                      persons,
-                      o => o.User.Key == v.LoginName
-                    );
-                    if (userPersona && userPersona.User) {
-                      let user = userPersona.User;
-                      lodash.assign(user, v);
-                      userPersona.User = user;
-                    }
-                  });
-
-                  resolve(persons);
+          .then(persons => {
+            const batch = this.props.spHttpClient.beginBatch();
+            const ensureUserUrl = `${this.props.siteUrl}/_api/web/ensureUser`;
+            const batchPromises: Promise<IEnsureUser>[] = persons.map(p => {
+              var userQuery = JSON.stringify({ logonName: p.User.Key });
+              return batch
+                .post(ensureUserUrl, SPHttpClientBatch.configurations.v1, {
+                  body: userQuery
                 })
-              );
-            },
-            (error: any): void => {
-              reject((this._peopleList = []));
-            }
-          )
+                .then((response: SPHttpClientResponse) => response.json())
+                .then((json: IEnsureUser) => json);
+            });
+
+            var users = batch.execute().then(() =>
+              Promise.all(batchPromises).then(values => {
+                values.forEach(v => {
+                  let userPersona = lodash.find(
+                    persons,
+                    o => o.User.Key == v.LoginName
+                  );
+                  if (userPersona && userPersona.User) {
+                    let user = userPersona.User;
+                    lodash.assign(user, v);
+                    userPersona.User = user;
+                  }
+                });
+
+                resolve(persons);
+              })
+            );
+          })
       );
     }
   }
 
-  private _filterPersonasByText(filterText: string): IPersonaProps[] {
-    return this._peopleList.filter(item =>
-      this._doesTextStartWith(item.primaryText, filterText)
-    );
-  }
-
-  private _removeDuplicates(
-    personas: IPersonaProps[],
-    possibleDupes: IPersonaProps[]
-  ) {
-    return personas.filter(
-      persona => !this._listContainsPersona(persona, possibleDupes)
-    );
-  }
   private _listContainsPersona(
     persona: IPersonaProps,
     personas: IPersonaProps[]
@@ -299,24 +242,5 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
       personas.filter(item => item.primaryText === persona.primaryText).length >
       0
     );
-  }
-  private _filterPromise(
-    personasToReturn: IPersonaProps[]
-  ): IPersonaProps[] | Promise<IPersonaProps[]> {
-    if (this.state.delayResults) {
-      return this._convertResultsToPromise(personasToReturn);
-    } else {
-      return personasToReturn;
-    }
-  }
-  private _convertResultsToPromise(
-    results: IPersonaProps[]
-  ): Promise<IPersonaProps[]> {
-    return new Promise<IPersonaProps[]>((resolve, reject) =>
-      setTimeout(() => resolve(results), 2000)
-    );
-  }
-  private _doesTextStartWith(text: string, filterText: string): boolean {
-    return text.toLowerCase().indexOf(filterText.toLowerCase()) === 0;
   }
 }
