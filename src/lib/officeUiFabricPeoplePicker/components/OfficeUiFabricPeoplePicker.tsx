@@ -17,15 +17,14 @@ import { Environment, EnvironmentType } from "@microsoft/sp-core-library";
 import { Promise } from "es6-promise";
 import * as lodash from "lodash";
 import {
-  IEnsurableSharePointUser,
-  IEnsureUser,
   IOfficeUiFabricPeoplePickerState,
   SharePointUserPersona
 } from "../models/OfficeUiFabricPeoplePicker";
 import {
   sp,
   PeoplePickerEntity,
-  ClientPeoplePickerQueryParameters
+  ClientPeoplePickerQueryParameters,
+  WebEnsureUserResult
 } from "@pnp/pnpjs";
 
 const suggestionProps: IBasePickerSuggestionsProps = {
@@ -144,47 +143,27 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
         QueryString: terms
       };
 
-      return new Promise<SharePointUserPersona[]>((resolve, reject) => {
-        sp.profiles
-          .clientPeoplePickerSearchUser(queryParams)
-          .then((value: PeoplePickerEntity[]) => {
-            let persons = value.map(
-              p => new SharePointUserPersona(p as IEnsurableSharePointUser)
-            );
-            return persons;
-          })
-          .then(persons => {
-            const batch = this.props.spHttpClient.beginBatch();
-            const ensureUserUrl = `${this.props.siteUrl}/_api/web/ensureUser`;
-            const batchPromises: Promise<IEnsureUser>[] = persons.map(p => {
-              var userQuery = JSON.stringify({ logonName: p.User.Key });
-              return batch
-                .post(ensureUserUrl, SPHttpClientBatch.configurations.v1, {
-                  body: userQuery
-                })
-                .then((response: SPHttpClientResponse) => response.json())
-                .then((json: IEnsureUser) => json);
-            });
+      return sp.profiles
+        .clientPeoplePickerSearchUser(queryParams)
+        .then((entities: PeoplePickerEntity[]) => {
+          var batch = sp.web.createBatch();
 
-            var users = batch.execute().then(() =>
-              Promise.all(batchPromises).then(values => {
-                values.forEach(v => {
-                  let userPersona = lodash.find(
-                    persons,
-                    o => o.User.Key == v.LoginName
-                  );
-                  if (userPersona && userPersona.User) {
-                    let user = userPersona.User;
-                    lodash.assign(user, v);
-                    userPersona.User = user;
-                  }
-                });
+          let personas = [];
 
-                resolve(persons);
-              })
-            );
+          entities.map((entity: PeoplePickerEntity) => {
+            sp.web
+              .inBatch(batch)
+              .ensureUser(entity.Key)
+              .then((result: WebEnsureUserResult) => {
+                personas.push(new SharePointUserPersona(entity, result));
+              });
           });
-      });
+
+          return batch.execute().then(_ => {
+            console.log(personas);
+            return personas;
+          });
+        });
     }
   }
 }
