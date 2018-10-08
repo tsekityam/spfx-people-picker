@@ -6,7 +6,6 @@ import {
   NormalPeoplePicker
 } from "office-ui-fabric-react/lib/Pickers";
 import { IPersonaProps } from "office-ui-fabric-react/lib/Persona";
-import { assign, autobind } from "office-ui-fabric-react/lib/Utilities";
 import { people } from "./PeoplePickerExampleData";
 import { IContextualMenuItem } from "office-ui-fabric-react/lib/ContextualMenu";
 import {
@@ -24,7 +23,6 @@ import {
   IOfficeUiFabricPeoplePickerState,
   SharePointUserPersona
 } from "../models/OfficeUiFabricPeoplePicker";
-import { IPersonaWithMenu } from "office-ui-fabric-react/lib/components/pickers/PeoplePicker/PeoplePickerItems/PeoplePickerItem.types";
 
 const suggestionProps: IBasePickerSuggestionsProps = {
   suggestionsHeaderText: "Suggested People",
@@ -109,12 +107,11 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
     }
   }
 
-  @autobind
-  private _onFilterChanged(
+  private _onFilterChanged = (
     filterText: string,
     currentPersonas: IPersonaProps[],
     limitResults?: number
-  ) {
+  ) => {
     if (filterText) {
       if (filterText.length > 2) {
         return this._searchPeople(filterText);
