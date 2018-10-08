@@ -10,6 +10,7 @@ import {
 import * as strings from "HelloWorldWebPartStrings";
 import HelloWorld from "./components/HelloWorld";
 import { IHelloWorldProps } from "./components/IHelloWorldProps";
+import pnp from "@pnp/pnpjs";
 
 export interface IHelloWorldWebPartProps {
   description: string;
@@ -18,6 +19,14 @@ export interface IHelloWorldWebPartProps {
 export default class HelloWorldWebPart extends BaseClientSideWebPart<
   IHelloWorldWebPartProps
 > {
+  public onInit(): Promise<void> {
+    return super.onInit().then(_ => {
+      pnp.setup({
+        spfxContext: this.context
+      });
+    });
+  }
+
   public render(): void {
     const element: React.ReactElement<IHelloWorldProps> = React.createElement(
       HelloWorld,

@@ -17,12 +17,16 @@ import { Environment, EnvironmentType } from "@microsoft/sp-core-library";
 import { Promise } from "es6-promise";
 import * as lodash from "lodash";
 import {
-  IClientPeoplePickerSearchUser,
   IEnsurableSharePointUser,
   IEnsureUser,
   IOfficeUiFabricPeoplePickerState,
   SharePointUserPersona
 } from "../models/OfficeUiFabricPeoplePicker";
+import pnp, {
+  sp,
+  PeoplePickerEntity,
+  ClientPeoplePickerQueryParameters
+} from "@pnp/pnpjs";
 
 const suggestionProps: IBasePickerSuggestionsProps = {
   suggestionsHeaderText: "Suggested People",
@@ -114,9 +118,6 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
       // If the running environment is local, load the data from the mock
       return this.searchPeopleFromMock(terms);
     } else {
-      const userRequestUrl: string = `${
-        this.props.siteUrl
-      }/_api/SP.UI.ApplicationPages.ClientPeoplePickerWebServiceInterface.clientPeoplePickerSearchUser`;
       let principalType: number = 0;
       if (this.props.principalTypeUser === true) {
         principalType += 1;
@@ -130,34 +131,24 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
       if (this.props.principalTypeDistributionList === true) {
         principalType += 2;
       }
-      const userQueryParams = {
-        queryParams: {
-          AllowEmailAddresses: true,
-          AllowMultipleEntities: false,
-          AllUrlZones: false,
-          MaximumEntitySuggestions: this.props.numberOfItems,
-          PrincipalSource: 15,
-          // PrincipalType controls the type of entities that are returned in the results.
-          // Choices are All - 15, Distribution List - 2 , Security Groups - 4, SharePoint Groups - 8, User - 1.
-          // These values can be combined (example: 13 is security + SP groups + users)
-          PrincipalType: principalType,
-          QueryString: terms
-        }
+      const queryParams: ClientPeoplePickerQueryParameters = {
+        AllowEmailAddresses: true,
+        AllowMultipleEntities: false,
+        AllUrlZones: false,
+        MaximumEntitySuggestions: this.props.numberOfItems,
+        PrincipalSource: 15,
+        // PrincipalType controls the type of entities that are returned in the results.
+        // Choices are All - 15, Distribution List - 2 , Security Groups - 4, SharePoint Groups - 8, User - 1.
+        // These values can be combined (example: 13 is security + SP groups + users)
+        PrincipalType: principalType,
+        QueryString: terms
       };
 
-      return new Promise<SharePointUserPersona[]>((resolve, reject) =>
-        this.props.spHttpClient
-          .post(userRequestUrl, SPHttpClient.configurations.v1, {
-            body: JSON.stringify(userQueryParams)
-          })
-          .then((response: SPHttpClientResponse) => {
-            return response.json();
-          })
-          .then((response: { value: string }) => {
-            let userQueryResults: IClientPeoplePickerSearchUser[] = JSON.parse(
-              response.value
-            );
-            let persons = userQueryResults.map(
+      return new Promise<SharePointUserPersona[]>((resolve, reject) => {
+        sp.profiles
+          .clientPeoplePickerSearchUser(queryParams)
+          .then((value: PeoplePickerEntity[]) => {
+            let persons = value.map(
               p => new SharePointUserPersona(p as IEnsurableSharePointUser)
             );
             return persons;
@@ -192,8 +183,8 @@ export class OfficeUiFabricPeoplePicker extends React.Component<
                 resolve(persons);
               })
             );
-          })
-      );
+          });
+      });
     }
   }
 }
