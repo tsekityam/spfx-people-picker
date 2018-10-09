@@ -1,4 +1,4 @@
-import { SharePointUserPersona } from "..";
+import { SharePointUserPersona } from "../models";
 
 export interface IOfficeUiFabricPeoplePickerProps {
   typePicker: string;
