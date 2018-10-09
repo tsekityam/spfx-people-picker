@@ -1,4 +1,3 @@
-import { IPersonaProps } from "office-ui-fabric-react/lib/Persona";
 import { SharePointUserPersona } from "../models";
 
 export const people: SharePointUserPersona[] = [

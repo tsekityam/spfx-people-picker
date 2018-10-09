@@ -4,7 +4,6 @@ import {
   CompactPeoplePicker,
   NormalPeoplePicker
 } from "office-ui-fabric-react/lib/Pickers";
-import { IPersonaProps } from "office-ui-fabric-react/lib/Persona";
 import { people } from "./PeoplePickerExampleData";
 import {
   SPHttpClient,
